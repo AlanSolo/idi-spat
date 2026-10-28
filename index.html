@@ -1,0 +1,144 @@
+<title>Иди спать</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;600&display=swap">
+<style>
+  /* Одна сцена: ночное небо, по центру синяя кнопка, под ней ответ. Только тёмная тема — по замыслу. */
+  :root {
+    color-scheme: dark;
+    --night: #070a14;
+    --night-2: #0d1326;
+    --ink: #e6e9f5;
+    --muted: #7d86a6;
+    --blue: #2f6bff;
+    --blue-glow: rgba(47, 107, 255, 0.45);
+    --font-display: "Unbounded", "Segoe UI", system-ui, sans-serif;
+    --font-body: "Manrope", "Segoe UI", system-ui, sans-serif;
+  }
+  html, body { height: 100%; }
+  body {
+    background: radial-gradient(120% 90% at 50% 0%, var(--night-2), var(--night) 70%);
+    color: var(--ink);
+    font-family: var(--font-body);
+    overflow: hidden;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    box-sizing: border-box;
+  }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  main {
+    position: relative;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 40px;
+    text-align: center;
+  }
+  .clock {
+    font-family: var(--font-body);
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  button#sleep {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 16px;
+    letter-spacing: 0.04em;
+    color: #fff;
+    background: var(--blue);
+    border: 0;
+    border-radius: 999px;
+    padding: 20px 44px;
+    cursor: pointer;
+    box-shadow: 0 0 0 0 var(--blue-glow), 0 10px 40px -10px var(--blue-glow);
+    transition: transform .15s ease, box-shadow .3s ease, background .2s ease;
+  }
+  button#sleep:hover { background: #3d77ff; box-shadow: 0 0 0 8px rgba(47,107,255,.12), 0 14px 50px -10px var(--blue-glow); }
+  button#sleep:active { transform: scale(.96); }
+  button#sleep:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+  .answer {
+    min-height: 1.2em;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(40px, 11vw, 96px);
+    line-height: 1.05;
+    text-wrap: balance;
+    margin: 0;
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(8px);
+    transition: opacity .6s ease, transform .6s ease, filter .6s ease;
+  }
+  .answer.show { opacity: 1; transform: none; filter: none; }
+  .hint { font-size: 14px; color: var(--muted); margin: 0; min-height: 1.4em; transition: opacity .4s; }
+  @media (prefers-reduced-motion: reduce) {
+    .answer, button#sleep { transition: none; }
+  }
+</style>
+
+<canvas id="sky"></canvas>
+<main>
+  <div class="clock" id="clock">--:--</div>
+  <p class="answer" id="answer" aria-live="polite">Иди спать</p>
+  <button id="sleep" type="button">Что мне делать?</button>
+  <p class="hint" id="hint">Нажми кнопку</p>
+</main>
+
+<script>
+  const answer = document.getElementById('answer');
+  const hint = document.getElementById('hint');
+  const btn = document.getElementById('sleep');
+  const clock = document.getElementById('clock');
+
+  const hints = [
+    'Серьёзно. Уже поздно.',
+    'Телефон подождёт до утра.',
+    'Подушка скучает.',
+    'Завтра скажешь себе спасибо.',
+    'Восемь часов сна, а не восемь серий.'
+  ];
+  let n = 0;
+
+  btn.addEventListener('click', () => {
+    answer.classList.remove('show');
+    void answer.offsetWidth;
+    answer.classList.add('show');
+    hint.textContent = hints[n++ % hints.length];
+    btn.textContent = 'Ещё раз?';
+  });
+
+  function tick() {
+    const d = new Date();
+    const t = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    clock.textContent = t + ' · самое время';
+  }
+  tick(); setInterval(tick, 10000);
+
+  // Звёзды
+  const c = document.getElementById('sky'), x = c.getContext('2d');
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let stars = [];
+  function resize() {
+    const r = devicePixelRatio || 1;
+    c.width = innerWidth * r; c.height = innerHeight * r;
+    x.setTransform(r, 0, 0, r, 0, 0);
+    stars = Array.from({ length: Math.round(innerWidth * innerHeight / 9000) }, () => ({
+      x: Math.random() * innerWidth, y: Math.random() * innerHeight,
+      s: Math.random() * 1.2 + .2, p: Math.random() * Math.PI * 2, v: Math.random() * .8 + .3
+    }));
+  }
+  function draw(t) {
+    x.clearRect(0, 0, innerWidth, innerHeight);
+    for (const s of stars) {
+      const a = still ? .6 : .35 + .35 * Math.sin(t / 1000 * s.v + s.p);
+      x.fillStyle = `rgba(200,210,255,${a})`;
+      x.beginPath(); x.arc(s.x, s.y, s.s, 0, 7); x.fill();
+    }
+    if (!still) requestAnimationFrame(draw);
+  }
+  addEventListener('resize', () => { resize(); if (still) draw(0); });
+  resize(); requestAnimationFrame(draw);
+</script>
